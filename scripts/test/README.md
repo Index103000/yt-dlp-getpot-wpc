@@ -216,5 +216,3 @@ python ./scripts/test/test_wpc_browser_boot.py `
 6. `--debug-proxy-extension` 可打印扩展激活诊断信息，用于定位 MV3 扩展问题。
 
 ------
-
-我可以帮你再做一份**精简版表格式对比文档**，把 Windows 和 Linux 两条命令直接对照并标记参数差异，方便测试手册查阅。你希望我生成吗？
