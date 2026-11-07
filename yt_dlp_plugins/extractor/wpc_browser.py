@@ -384,22 +384,33 @@ async def best_effort_clear_cookies(browser, *, logger) -> None:
     - 清 cookie 不是 WPC 生成 POT 的硬前置；
     - 当前 WPC 每次都会创建独立 profile；
     - 正常情况下 profile 本来就是空的；
-    - browser.connection 为 None 时直接跳过；
+    - 优先使用 nodriver 的 browser.cookies.clear()；
+    - 新接口缺失或失败时，兼容旧 browser.connection 的 CDP 清理接口；
+    - 两种接口都不可用时跳过，不影响临时浏览器继续初始化；
     - clear cookies 失败也只记录 debug，不中断 WPC。
 
     为什么保留该步骤：
     - 如果未来 profile 被复用，或者临时目录清理失败，清 cookie 可以降低状态污染；
-    - 如果 browser.connection 可用，清理一下仍然有意义。
+    - 官方 WPC 1.1.2 已改用 CookieJar 接口，避免新版本中 browser.connection 为 None。
     """
-    connection = getattr(browser, "connection", None)
-
-    if connection is None:
+    try:
+        cookie_jar = getattr(browser, "cookies", None)
+        clear_cookies = getattr(cookie_jar, "clear", None)
+        if callable(clear_cookies):
+            await clear_cookies()
+            return
+    except Exception as e:
         logger.debug(
-            "[wpc-browser-ready] skip clearing cookies because browser.connection is None"
+            f"failed to clear browser cookies via CookieJar, trying legacy CDP: {e!r}"
         )
-        return
 
     try:
+        connection = getattr(browser, "connection", None)
+        if connection is None:
+            logger.debug(
+                "[wpc-browser-ready] skip clearing cookies because no usable cookie API is available"
+            )
+            return
         await connection.send(cdp.storage.clear_cookies())
     except Exception as e:
         logger.debug(

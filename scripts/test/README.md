@@ -2,6 +2,41 @@
 
 本文档说明如何使用 `test_browser_proxy_ip.py` 和 `test_wpc_browser_boot.py` 在 Windows 和 Linux 环境下测试代理 IP 与 WebPoClient 启动情况。
 
+## 升级回归与验收边界
+
+- `test_wpc_compatibility.py` 是离线回归：使用真实 nodriver 0.50.99 API 和临时扩展文件，
+  浏览器及网络交互由替身隔离，覆盖 Cookie 新/旧接口、无头与认证代理配置及清理。
+- 下方 boot/mint 测试用于真实浏览器。WebPoClient 可用、生成 Token、缓存命中、媒体成功应分别记录，
+  不能仅凭“插件已加载”或“窗口已打开”判定 PO Token 成功。
+- Provider 名称仍为 `wpc`。与 bgutil 同时存在时，它可能没有被实际调用；专项测试应在独立进程中限定提供方，
+  验证真实返回和缓存命中，不修改生产偏好或全局配置。
+- 真实测试请使用独立 `XDG_CACHE_HOME`，只清理本次创建的 profile、扩展、缓存与浏览器 PID。
+  旧 boot 脚本的 `--mint-test` 会打印原始 Token，provider 的 trace 也包含 Token；
+  报告应仅保留长度/摘要、来源、耗时和成功状态，不能原样保存这些输出。
+
+```bash
+.venv/bin/python -B scripts/test/test_wpc_compatibility.py
+```
+
+### 2026-11-07 本机验证记录
+
+- 基于 `chrome` 分支 `769cbd3`，自定义 Provider 版本 `1.1.2+chrome.1`，nodriver `0.50.99`，
+  Python `3.14.2`，外部 yt-dlp `2026.10.26`，Chromium `148.0.7778.215`。
+- consumer 实际加载的模块位于本仓库 `.venv/lib/python3.14/site-packages/yt_dlp_plugins/extractor/`，
+  含 `wpc_browser`、代理认证扩展、缓存及门禁模块；不再是原来的官方单文件 1.0.0 安装。
+- nodriver 70 个 Python 文件通过 UTF-8/语法检查，`network.py` 与新发行包 RECORD 一致，未添加本地编码补丁。
+- 离线回归 8 项通过，涵盖新旧 Cookie API、无头/MV3 配置及多种失败清理路径。
+- 冷缓存真实 GVS 请求：使用带认证 HTTP 代理与 `mweb`，WPC 返回非空 Token；重复同一请求时命中自己的磁盘缓存。
+  共实际生成 1 次、启动 1 个无头浏览器、缓存命中 1 次，结束后没有遗留测试浏览器进程。
+- 会员媒体验证：限定当前测试进程的 Provider 为 WPC，通过真实 consumer worker 下载 `ghPG2NW2Lkc`。
+  使用当前 Chrome 登录态、同一 HTTP 代理，`mweb` 客户端；WPC 真实返回 Token 1 次，启动 1 个无头浏览器。
+  最终为 `598+599-drc`，文件 625,824 字节，256×144，90.279 秒，包含音视频且 `.info.json` 存在。
+  `availability=subscriber_only`，已知 Cookie/Token 秘密值扫描未发现泄漏。
+- 媒体验证结束后，浏览器 PID、profile 与该次运行目录均无残留；整体测试缓存和媒体也已删除。
+
+这些结果只覆盖上述本机 Chromium、代理、客户端及小流格式，不代表所有平台/客户端已验收；
+尤其直连、无认证代理路径不是此次真实验证范围。真实 Token 和代理密码不保存在本记录中。
+
 ------
 
 ## 一、测试目的
@@ -174,7 +209,7 @@ python ./scripts/test/test_wpc_browser_boot.py `
 | -------------------------- | --------------------------------------- | --------------------------------------------------- |
 | `--browser-path`           | Chrome/Chromium 可执行文件路径          | -                                                   |
 | `--proxy`                  | 代理 URL，可带认证或不带                | None                                                |
-| `--proxy-auth-mode`        | `auto                                   | direct                                              |
+| `--proxy-auth-mode`        | 按脚本帮助选择自动、直接或扩展认证策略  | 以对应脚本 `--help` 为准                             |
 | `--runtime-base-dir`       | 临时 profile/ext 基目录                 | `/tmp/wpc-proxy-ip-test` 或 `/tmp/wpc-browser-test` |
 | `--activation-timeout`     | MV3 代理扩展激活超时时间（秒）          | 5                                                   |
 | `--document-ready-timeout` | 等待 document.readyState 超时时间（秒） | 30                                                  |

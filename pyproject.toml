@@ -4,15 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yt-dlp-getpot-wpc"
-version = "1.0.0"
+version = "1.1.2+chrome.1"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { file = "LICENSE"}
 keywords = ["yt-dlp", "yt-dlp-plugin", "yt-dlp-pot-provider"]
 authors = [
   { name = "coletdjnz", email = "coletdjnz@protonmail.com" },
 ]
-dependencies = [ "nodriver", "psutil"]
+# chrome 定制功能保留 psutil；nodriver 采用官方 PR #25 提议的版本。
+dependencies = [ "nodriver==0.50.99", "psutil"]
 
 [tool.hatch.env.default]
 installer = "uv"
@@ -20,3 +21,6 @@ path = ".venv"
 
 [tool.hatch.build.targets.wheel]
 packages = ["yt_dlp_plugins"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github"]

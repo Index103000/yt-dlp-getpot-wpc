@@ -42,7 +42,7 @@ from yt_dlp_plugins.extractor.wpc_paths import ensure_wpc_cache_dir
 from yt_dlp_plugins.extractor.wpc_runtime_config import WPC_RUNTIME_CONFIG
 
 
-__version__ = '1.0.0'
+__version__ = '1.1.2+chrome.1'
 
 
 # =============================================================================
